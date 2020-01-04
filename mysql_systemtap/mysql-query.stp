@@ -1,0 +1,22 @@
+global query_time, query_summary
+
+probe process("/usr/libexec/mysqld").mark("query__start") {
+  query_time[tid(), $arg1] = gettimeofday_us();
+}
+
+probe process("/usr/libexec/mysqld").mark("query__done") {
+  p = tid()
+  t = query_time[p, $arg1]; delete query_time[p, $arg1]
+  if (t) {
+    query_summary[p] <<< (gettimeofday_us() - t);
+  }
+}
+
+
+probe end {
+  printf("\ntid count min(us) avg(us) max(us)\n");
+  foreach (p in query_summary) {
+    printf("%d %d %d %d %d\n", p, @count(query_summary[p]),
+     @min(query_summary[p]), @avg(query_summary[p]), @max(query_summary[p]));
+  }
+}

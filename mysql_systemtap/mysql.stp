@@ -1,0 +1,24 @@
+#/usr/bin/stap
+
+global t_parse, t_redo, t_binlog, t_undo, t_total, t_net;
+global t_undo_redo, t_insert_redo, t_update_redo, t_delete_redo;
+global cs, sqlcount;
+global riotime, wiotime, reads, writes;
+
+probe process("/usr/local/mysql/bin/mysqld").function("parse_sql").return {
+    t_parse += (gettimeofday_us()-@entry(gettimeofday_us()));
+}
+
+
+
+global latency
+probe process("/usr/local/mysql/bin/mysqld").mark("query__parse__start") {
+        printf ("parsing %s\n", user_string($arg1))
+        latency[tid()] = gettimeofday_ns()
+}
+
+probe process("/usr/local/mysql/bin/mysqld").mark("query__parse__done") {
+        printf ("parse latency: %dns\n", gettimeofday_ns() - latency[tid()])
+}
+
+
